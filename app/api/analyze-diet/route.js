@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 
 export async function POST(request) {
   try {
@@ -8,8 +8,7 @@ export async function POST(request) {
       return Response.json({ error: "오늘 먹은 음식을 먼저 기록해주세요." }, { status: 400 });
     }
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
     const totalCal     = foods.reduce((s, f) => s + (f.calories || 0), 0);
     const totalProtein = foods.reduce((s, f) => s + (f.protein  || 0), 0);
@@ -83,8 +82,11 @@ ${exerciseList}
 }
 `;
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
+    const result = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: prompt,
+    });
+    const text = result.text;
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) throw new Error("파싱 실패");
 
