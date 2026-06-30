@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import Groq from "groq-sdk";
 
 export async function POST(request) {
   try {
@@ -8,7 +8,7 @@ export async function POST(request) {
       return Response.json({ error: "음식을 입력해주세요." }, { status: 400 });
     }
 
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
     const prompt = `당신은 영양사 AI입니다. 사용자가 오늘 먹은 음식 목록을 분석하여 JSON 형식으로 응답해주세요.
 
@@ -39,12 +39,12 @@ export async function POST(request) {
   "summary": "오늘 식단에 대한 전체 총평 (2-3문장)"
 }`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash-lite",
-      contents: prompt,
+    const completion = await groq.chat.completions.create({
+      model: "llama-3.1-8b-instant",
+      messages: [{ role: "user", content: prompt }],
     });
 
-    const text = response.text;
+    const text = completion.choices[0].message.content;
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("Invalid response format");
 

@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import Groq from "groq-sdk";
 
 export async function POST(request) {
   try {
@@ -8,7 +8,7 @@ export async function POST(request) {
       return Response.json({ error: "오늘 먹은 음식을 먼저 기록해주세요." }, { status: 400 });
     }
 
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
     const totalCal     = foods.reduce((s, f) => s + (f.calories || 0), 0);
     const totalProtein = foods.reduce((s, f) => s + (f.protein  || 0), 0);
@@ -49,8 +49,8 @@ ${exerciseList}
 
 {
   "score": 건강점수_0에서100_정수,
-  "scoreComment": "점수 한줄 총평 (예: 영양 균형이 잘 잡힌 하루입니다)",
-  "calorieStatus": "칼로리 상태 한줄 평가 (목표 대비 어떤지)",
+  "scoreComment": "점수 한줄 총평",
+  "calorieStatus": "칼로리 상태 한줄 평가",
   "positives": [
     "잘한 점 1 (구체적으로, 한 문장)",
     "잘한 점 2 (구체적으로, 한 문장)",
@@ -73,20 +73,21 @@ ${exerciseList}
     "개선 제안 3 (매우 구체적으로, 실천 가능한 제안)"
   ],
   "recommendations": [
-    { "food": "추천 음식 이름", "reason": "이 음식을 추천하는 구체적인 이유 (어떤 영양소가 보충됨)" },
+    { "food": "추천 음식 이름", "reason": "이 음식을 추천하는 구체적인 이유" },
     { "food": "추천 음식 이름", "reason": "이 음식을 추천하는 구체적인 이유" },
     { "food": "추천 음식 이름", "reason": "이 음식을 추천하는 구체적인 이유" },
     { "food": "추천 음식 이름", "reason": "이 음식을 추천하는 구체적인 이유" }
   ],
-  "tomorrowTip": "내일 식단을 위한 핵심 팁 (1-2문장, 가장 중요한 것 하나)"
+  "tomorrowTip": "내일 식단을 위한 핵심 팁 (1-2문장)"
 }
 `;
 
-    const result = await ai.models.generateContent({
-      model: "gemini-2.0-flash-lite",
-      contents: prompt,
+    const completion = await groq.chat.completions.create({
+      model: "llama-3.1-8b-instant",
+      messages: [{ role: "user", content: prompt }],
     });
-    const text = result.text;
+
+    const text = completion.choices[0].message.content;
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) throw new Error("파싱 실패");
 

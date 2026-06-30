@@ -1,11 +1,11 @@
-import { GoogleGenAI } from "@google/genai";
+import Groq from "groq-sdk";
 
 export async function POST(request) {
   try {
     const { exercise, duration, weight } = await request.json();
     if (!exercise || !duration) return Response.json({ error: "운동 정보를 입력해주세요." }, { status: 400 });
 
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
     const prompt = `당신은 운동 영양사 AI입니다.
 체중 ${weight}kg인 사람이 "${exercise}"를 ${duration}분 했을 때 소모되는 칼로리를 MET 공식으로 정확하게 계산하세요.
@@ -19,12 +19,12 @@ export async function POST(request) {
   "met": MET값_소수점1자리
 }`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash-lite",
-      contents: prompt,
+    const completion = await groq.chat.completions.create({
+      model: "llama-3.1-8b-instant",
+      messages: [{ role: "user", content: prompt }],
     });
 
-    const text = response.text;
+    const text = completion.choices[0].message.content;
     const match = text.match(/\{[\s\S]*?\}/);
     if (!match) throw new Error("파싱 실패");
 
