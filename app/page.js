@@ -276,11 +276,12 @@ function ProfileTab({ profile, setProfile, computed, onSave }) {
 // ─── FoodTab ───────────────────────────────────────────────────────────────
 
 function FoodTab({ foods, setFoods, totalFood, totalEx, goalCal, macros, readOnly }) {
-  const [input,   setInput]   = useState("");
-  const [amount,  setAmount]  = useState("");
-  const [meal,    setMeal]    = useState("점심");
-  const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState("");
+  const [input,    setInput]    = useState("");
+  const [amount,   setAmount]   = useState("");
+  const [meal,     setMeal]     = useState("점심");
+  const [loading,  setLoading]  = useState(false);
+  const [error,    setError]    = useState("");
+  const [preview,  setPreview]  = useState(null); // 계산 결과 미리보기
 
   const net = totalFood - totalEx;
   const remaining = goalCal - net;
@@ -292,9 +293,10 @@ function FoodTab({ foods, setFoods, totalFood, totalEx, goalCal, macros, readOnl
   const totalF = foods.reduce((s, f) => s + (f.fat     || 0), 0);
   const grouped = MEAL_TIMES.reduce((acc, t) => { acc[t] = foods.filter(f => f.mealTime === t); return acc; }, {});
 
-  const addFood = async () => {
+  // 1단계: AI 칼로리 계산 → 미리보기
+  const calcFood = async () => {
     if (!input.trim()) return;
-    setLoading(true); setError("");
+    setLoading(true); setError(""); setPreview(null);
     try {
       const res = await fetch("/api/food", {
         method: "POST",
@@ -303,11 +305,19 @@ function FoodTab({ foods, setFoods, totalFood, totalEx, goalCal, macros, readOnl
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-      setFoods(prev => [{ ...data, id: Date.now(), mealTime: meal }, ...prev]);
-      setInput(""); setAmount("");
+      setPreview(data);
     } catch (e) { setError(e.message); }
     finally { setLoading(false); }
   };
+
+  // 2단계: 미리보기 확인 후 추가
+  const confirmAdd = () => {
+    if (!preview) return;
+    setFoods(prev => [{ ...preview, id: Date.now(), mealTime: meal }, ...prev]);
+    setPreview(null); setInput(""); setAmount("");
+  };
+
+  const cancelPreview = () => { setPreview(null); };
 
   return (
     <div className="space-y-4 fade-up">
@@ -362,10 +372,38 @@ function FoodTab({ foods, setFoods, totalFood, totalEx, goalCal, macros, readOnl
             ))}
           </div>
           {error && <div className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl px-3.5 py-2.5">{error}</div>}
-          <button onClick={addFood} disabled={loading || !input.trim()}
-            className="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] disabled:bg-gray-100 disabled:text-gray-400 text-white rounded-xl py-3 text-sm font-semibold transition-all flex items-center justify-center gap-2 shadow-sm">
-            {loading ? <><span className="spinner" /> AI 칼로리 계산 중...</> : "AI 칼로리 자동 계산 →"}
-          </button>
+
+          {/* 계산 결과 미리보기 */}
+          {preview && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-bold text-emerald-800">{preview.name} <span className="font-normal text-emerald-600">{preview.amount}</span></span>
+                <span className="text-base font-bold text-orange-500">{preview.calories} kcal</span>
+              </div>
+              <div className="flex gap-3 text-xs">
+                <span className="text-blue-600 font-medium">단백질 {preview.protein}g</span>
+                <span className="text-amber-600 font-medium">탄수 {preview.carbs}g</span>
+                <span className="text-purple-600 font-medium">지방 {preview.fat}g</span>
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button onClick={confirmAdd}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl py-2.5 text-sm font-semibold transition-all">
+                  + 추가하기
+                </button>
+                <button onClick={cancelPreview}
+                  className="px-4 border border-gray-200 text-gray-500 rounded-xl py-2.5 text-sm hover:bg-gray-50 transition-all">
+                  취소
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!preview && (
+            <button onClick={calcFood} disabled={loading || !input.trim()}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] disabled:bg-gray-100 disabled:text-gray-400 text-white rounded-xl py-3 text-sm font-semibold transition-all flex items-center justify-center gap-2 shadow-sm">
+              {loading ? <><span className="spinner" /> AI 칼로리 계산 중...</> : "AI 칼로리 자동 계산 →"}
+            </button>
+          )}
         </div>
       )}
 
@@ -438,10 +476,11 @@ function ExerciseTab({ exercises, setExercises, totalEx, weight, readOnly }) {
   const [duration, setDuration] = useState("");
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState("");
+  const [preview,  setPreview]  = useState(null);
 
-  const addExercise = async () => {
+  const calcExercise = async () => {
     if (!input.trim() || !duration) return;
-    setLoading(true); setError("");
+    setLoading(true); setError(""); setPreview(null);
     try {
       const res = await fetch("/api/exercise", {
         method: "POST",
@@ -450,10 +489,15 @@ function ExerciseTab({ exercises, setExercises, totalEx, weight, readOnly }) {
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-      setExercises(prev => [{ ...data, id: Date.now() }, ...prev]);
-      setInput(""); setDuration("");
+      setPreview(data);
     } catch (e) { setError(e.message); }
     finally { setLoading(false); }
+  };
+
+  const confirmAdd = () => {
+    if (!preview) return;
+    setExercises(prev => [{ ...preview, id: Date.now() }, ...prev]);
+    setPreview(null); setInput(""); setDuration("");
   };
 
   const intensityColor = (i) => {
@@ -498,10 +542,36 @@ function ExerciseTab({ exercises, setExercises, totalEx, weight, readOnly }) {
             ))}
           </div>
           {error && <div className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl px-3.5 py-2.5">{error}</div>}
-          <button onClick={addExercise} disabled={loading || !input.trim() || !duration}
-            className="w-full bg-blue-600 hover:bg-blue-700 active:scale-[0.98] disabled:bg-gray-100 disabled:text-gray-400 text-white rounded-xl py-3 text-sm font-semibold transition-all flex items-center justify-center gap-2 shadow-sm">
-            {loading ? <><span className="spinner" /> 칼로리 계산 중...</> : "운동 칼로리 계산 →"}
-          </button>
+
+          {preview && (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-bold text-blue-800">{preview.name} <span className="font-normal text-blue-600">{preview.duration}분</span></span>
+                <span className="text-base font-bold text-blue-600">-{preview.calories} kcal</span>
+              </div>
+              <div className="flex gap-3 text-xs text-blue-500">
+                {preview.intensity && <span>강도: {preview.intensity}</span>}
+                {preview.met && <span>MET {preview.met}</span>}
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button onClick={confirmAdd}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-2.5 text-sm font-semibold transition-all">
+                  + 추가하기
+                </button>
+                <button onClick={() => setPreview(null)}
+                  className="px-4 border border-gray-200 text-gray-500 rounded-xl py-2.5 text-sm hover:bg-gray-50 transition-all">
+                  취소
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!preview && (
+            <button onClick={calcExercise} disabled={loading || !input.trim() || !duration}
+              className="w-full bg-blue-600 hover:bg-blue-700 active:scale-[0.98] disabled:bg-gray-100 disabled:text-gray-400 text-white rounded-xl py-3 text-sm font-semibold transition-all flex items-center justify-center gap-2 shadow-sm">
+              {loading ? <><span className="spinner" /> 칼로리 계산 중...</> : "운동 칼로리 계산 →"}
+            </button>
+          )}
         </div>
       )}
 
