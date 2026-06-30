@@ -5,7 +5,7 @@ export async function POST(request) {
     const { food, amount } = await request.json();
     if (!food) return Response.json({ error: "음식 이름을 입력해주세요." }, { status: 400 });
 
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY, httpOptions: { apiVersion: 'v1' } });
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
     const prompt = `당신은 영양사 AI입니다.
 음식 "${food}" ${amount || "1인분"}의 정확한 영양 정보를 계산해주세요.
@@ -22,7 +22,7 @@ export async function POST(request) {
 }`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.0-flash-lite",
       contents: prompt,
     });
 

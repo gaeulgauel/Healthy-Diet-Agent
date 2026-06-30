@@ -8,7 +8,7 @@ export async function POST(request) {
       return Response.json({ error: "오늘 먹은 음식을 먼저 기록해주세요." }, { status: 400 });
     }
 
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY, httpOptions: { apiVersion: 'v1' } });
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
     const totalCal     = foods.reduce((s, f) => s + (f.calories || 0), 0);
     const totalProtein = foods.reduce((s, f) => s + (f.protein  || 0), 0);
@@ -83,7 +83,7 @@ ${exerciseList}
 `;
 
     const result = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.0-flash-lite",
       contents: prompt,
     });
     const text = result.text;
