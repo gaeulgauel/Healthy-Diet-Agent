@@ -8,7 +8,7 @@ export async function POST(request) {
       return Response.json({ error: "음식을 입력해주세요." }, { status: 400 });
     }
 
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY, httpOptions: { apiVersion: 'v1' } });
 
     const prompt = `당신은 영양사 AI입니다. 사용자가 오늘 먹은 음식 목록을 분석하여 JSON 형식으로 응답해주세요.
 

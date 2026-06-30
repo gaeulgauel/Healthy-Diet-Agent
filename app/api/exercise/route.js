@@ -5,7 +5,7 @@ export async function POST(request) {
     const { exercise, duration, weight } = await request.json();
     if (!exercise || !duration) return Response.json({ error: "운동 정보를 입력해주세요." }, { status: 400 });
 
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY, httpOptions: { apiVersion: 'v1' } });
 
     const prompt = `당신은 운동 영양사 AI입니다.
 체중 ${weight}kg인 사람이 "${exercise}"를 ${duration}분 했을 때 소모되는 칼로리를 MET 공식으로 정확하게 계산하세요.
